@@ -59,3 +59,126 @@ import matplotlib.pyplot as plt
 
 # Generate data using the Lorenz equations
 ...
+```
+
+**Define the Lorenz system's derivative function** <br>
+```python 
+def lorenz_deriv(x_y_z, t0, sigma=10, beta=8/3, rho=28):
+    x, y, z = x_y_z
+    return [sigma * (y - x), x * (rho - z) - y, x * y - beta * z]
+```
+**Create function to generate training data for rho = 10, 28, 40** <br>
+```python 
+# Generate data for a given rho value
+def generate_data(rho, seed=123):
+    dt = 0.01
+    T = 8
+    t = np.arange(0, T + dt, dt)
+
+    np.random.seed(seed)
+    x0 = -15 + 30 * np.random.random((100, 3))
+
+    x_t = np.asarray([integrate.odeint(lorenz_deriv, x0_j, t, args=(10, 8/3, rho)) for x0_j in x0])
+
+    nn_input = np.zeros((100 * (len(t) - 1), 3))
+    nn_output = np.zeros_like(nn_input)
+
+    for j in range(100):
+        nn_input[j * (len(t) - 1):(j + 1) * (len(t) - 1), :] = x_t[j, :-1, :]
+        nn_output[j * (len(t) - 1):(j + 1) * (len(t) - 1), :] = x_t[j, 1:, :]
+
+    return nn_input, nn_output
+```
+**Train a Feed-Forward Neural Network** <br>
+```python 
+def train_ffnn(X_train, y_train, X_val, y_val, epochs=100):
+    model = Sequential()
+    model.add(Dense(16, activation='relu', input_shape=(3,)))
+    model.add(Dense(16, activation='relu'))
+    model.add(Dense(3))
+
+    model.compile(optimizer=Adam(learning_rate=0.001), loss='mse')
+    history = model.fit(X_train, y_train, epochs=epochs, validation_data=(X_val, y_val), verbose=0)
+    
+    return model, history
+```
+
+**Train a Recurrent Neural Network** <br>
+```python 
+def train_rnn(X_train, y_train, X_val, y_val, epochs=100):
+    model = Sequential()
+    model.add(SimpleRNN(64, activation='tanh', input_shape=(1, 3), return_sequences=True))
+    model.add(SimpleRNN(64, activation='tanh'))
+    model.add(Dense(3))
+
+    model.compile(optimizer=Adam(learning_rate=0.001), loss='mse')
+    
+    # Reshape the validation data
+    X_val_rnn = X_val.reshape(-1, 1, 3)
+    y_val_rnn = y_val.reshape(-1, 1, 3)
+    
+    history = model.fit(X_train, y_train, epochs=epochs, validation_data=(X_val_rnn, y_val_rnn), verbose=0)
+
+    return model, history
+```
+
+**Train a Long Short-Term Memory Network** <br>
+```python 
+def train_lstm(X_train, y_train, X_val, y_val, epochs=100):
+    model = Sequential()
+    model.add(LSTM(64, activation='tanh', input_shape=(1, 3), return_sequences=True))
+    model.add(LSTM(64, activation='tanh'))
+    model.add(Dense(3))
+
+    model.compile(optimizer=Adam(learning_rate=0.001), loss='mse')
+    
+    # Reshape the validation data
+    X_val_lstm = X_val.reshape(-1, 1, 3)
+    y_val_lstm = y_val.reshape(-1, 1, 3)
+    
+    history = model.fit(X_train, y_train, epochs=epochs, validation_data=(X_val_lstm, y_val_lstm), verbose=0)
+
+    return model, history
+```
+
+**Scale the data** <br>
+```python 
+scaler = MinMaxScaler(feature_range=(-1, 1))
+```
+
+**Create our ESN model for comparison** <br>
+```python 
+def create_esn_model(input_shape, units, connectivity=0.1, leaky=1, spectral_radius=0.9):
+    inputs = tf.keras.Input(shape=input_shape)
+    esn_outputs = tfa.layers.ESN(units, connectivity, leaky, spectral_radius)(inputs)
+    output = tf.keras.layers.Dense(1)(esn_outputs)
+    
+    model = tf.keras.Model(inputs=inputs, outputs=output)
+    model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.001), loss='mse')
+    
+    return model
+```
+
+**Train ESN** <br>
+```python 
+def train_esn(X_train, y_train, X_test, y_test, input_shape, reservoir_size, epochs=50, batch_size=32):
+    esn_model = create_esn_model(input_shape, reservoir_size)
+    esn_history = esn_model.fit(X_train, y_train, epochs=epochs, batch_size=batch_size, validation_data=(X_test, y_test), verbose=2)
+    return esn_model, esn_history
+```
+
+**Evaluate the ESN** <br>
+```python 
+for rho in rho_test_values:
+    X_test, y_test = generate_data(rho)
+
+    X_test_scaled = scaler.transform(X_test)
+    y_test_scaled = scaler.transform(y_test)
+    X_test_esn = X_test_scaled.reshape(-1, 1, 3)
+
+    esn_pred = esn_model.predict(X_test_esn)
+    esn_mse = np.mean((y_test_scaled - esn_pred)**2)
+
+    print(f"Mean Squared Error for rho = {rho}")
+    print(f"ESN: {esn_mse}")
+```
