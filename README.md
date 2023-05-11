@@ -182,3 +182,126 @@ for rho in rho_test_values:
     print(f"Mean Squared Error for rho = {rho}")
     print(f"ESN: {esn_mse}")
 ```
+
+## IV. Computational Results
+
+By creating a feed-forward neural network, we were able to compare and contrast its performance with recurrent neural networks and LSTMs:
+
+```python
+# Train a Feed-Forward Neural Network
+def train_ffnn(X_train, y_train, X_val, y_val, epochs=100):
+    model = Sequential()
+    model.add(Dense(16, activation='relu', input_shape=(3,)))
+    model.add(Dense(16, activation='relu'))
+    model.add(Dense(3))
+
+    model.compile(optimizer=Adam(learning_rate=0.001), loss='mse')
+    history = model.fit(X_train, y_train, epochs=epochs, validation_data=(X_val, y_val), verbose=0)
+    
+    return model, history
+
+# Train a Recurrent Neural Network
+def train_rnn(X_train, y_train, X_val, y_val, epochs=100):
+    model = Sequential()
+    model.add(SimpleRNN(64, activation='tanh', input_shape=(1, 3), return_sequences=True))
+    model.add(SimpleRNN(64, activation='tanh'))
+    model.add(Dense(3))
+
+    model.compile(optimizer=Adam(learning_rate=0.001), loss='mse')
+    
+    # Reshape the validation data
+    X_val_rnn = X_val.reshape(-1, 1, 3)
+    y_val_rnn = y_val.reshape(-1, 1, 3)
+    
+    history = model.fit(X_train, y_train, epochs=epochs, validation_data=(X_val_rnn, y_val_rnn), verbose=0)
+
+    return model, history
+
+
+# Train a Long Short-Term Memory Network
+def train_lstm(X_train, y_train, X_val, y_val, epochs=100):
+    model = Sequential()
+    model.add(LSTM(64, activation='tanh', input_shape=(1, 3), return_sequences=True))
+    model.add(LSTM(64, activation='tanh'))
+    model.add(Dense(3))
+
+    model.compile(optimizer=Adam(learning_rate=0.001), loss='mse')
+    
+    # Reshape the validation data
+    X_val_lstm = X_val.reshape(-1, 1, 3)
+    y_val_lstm = y_val.reshape(-1, 1, 3)
+    
+    history = model.fit(X_train, y_train, epochs=epochs, validation_data=(X_val_lstm, y_val_lstm), verbose=0)
+
+    return model, history
+
+```
+
+For our test on the Lorenz equations, we compared feed-forward, LSTM, RNN and Echo State Networks for forecasting the dynamics. <br>
+
+**Feed-Forward Neural Network (FFNN)** <br>
+The FFNN was trained for ρ = 10, 28, and 35. We then tested the network for future state prediction for ρ = 17 and ρ = 35. The mean squared error (MSE) was as follows:
+```
+2500/2500 [==============================] - 2s 609us/step
+Mean Squared Error for rho = 17
+FFNN: 2.7239888884449422e-05
+2500/2500 [==============================] - 1s 588us/step
+Mean Squared Error for rho = 35
+FFNN: 3.200739952980744e-05
+```
+**Recurrent Neural Network (RNN)** <br>
+The RNN was also trained for ρ = 10, 28, and 35. We then tested the network for future state prediction for ρ = 17 and ρ = 35. The MSE was as follows:
+```
+2500/2500 [==============================] - 2s 758us/step
+Mean Squared Error for rho = 10
+RNN: 0.037857085428462924
+(80000, 3)
+2500/2500 [==============================] - 2s 774us/step
+Mean Squared Error for rho = 28
+RNN: 0.04218182993158904
+```
+**Long Short-Term Memory (LSTM)** <br>
+The LSTM was trained on the same ρ = 10, 28, and 35. We then tested the network for future state prediction for ρ = 17 and ρ = 35. The MSE was as follows:
+```
+2500/2500 [==============================] - 3s 965us/step
+Mean Squared Error for rho = 17
+LSTM: 0.030265745313244153
+2500/2500 [==============================] - 3s 1ms/step
+Mean Squared Error for rho = 35
+LSTM: 0.06378890443500634
+```
+
+Here, we can see that the feed-forward neural network (FFNN) performed the best overall, achieving the lowest MSE values for both $\rho=10$ and $\rho=17$. The FFNN outperformed the RNN and LSTM models, which showed higher MSE values for the same $\rho$ values. However, it is worth noting that the RNN and LSTM models had lower MSE values for $\rho=28$ and $\rho=35$ compared to the FFNN. <br>
+
+On the other hand, the Echo State Network (ESN) did not perform well for any of the tested $\rho$ values, with MSE values much higher than the other models. <br>
+
+Below are the four plots for each model, which show the predicted trajectories for $\rho=17$ and $\rho=35$:
+
+![image](https://github.com/booquist/Comparing-Neural-Network-Architectures-for-Lorenz-Equation-Forecasting---EE-399-Homework-5-Spr2023/assets/103399658/f688a659-993a-4c05-853e-d684dc4efeb7)
+![image](https://github.com/booquist/Comparing-Neural-Network-Architectures-for-Lorenz-Equation-Forecasting---EE-399-Homework-5-Spr2023/assets/103399658/94dac603-2137-4639-bf13-230fa8971ad1)
+
+FFNN: <br>
+![image](https://github.com/booquist/Comparing-Neural-Network-Architectures-for-Lorenz-Equation-Forecasting---EE-399-Homework-5-Spr2023/assets/103399658/95f29f6e-b1ff-4026-a43c-93f7612f6b6f)
+![image](https://github.com/booquist/Comparing-Neural-Network-Architectures-for-Lorenz-Equation-Forecasting---EE-399-Homework-5-Spr2023/assets/103399658/815a360d-1677-4517-a9d1-d13ab80cb1dd)
+
+RNN: <br>
+![image](https://github.com/booquist/Comparing-Neural-Network-Architectures-for-Lorenz-Equation-Forecasting---EE-399-Homework-5-Spr2023/assets/103399658/2cc1b5dd-c404-4d6a-bc4c-c7013ec43019)
+![image](https://github.com/booquist/Comparing-Neural-Network-Architectures-for-Lorenz-Equation-Forecasting---EE-399-Homework-5-Spr2023/assets/103399658/8c8084a9-e9c8-409f-b456-1040f9cbf89a)
+
+LSTM: <br>
+![image](https://github.com/booquist/Comparing-Neural-Network-Architectures-for-Lorenz-Equation-Forecasting---EE-399-Homework-5-Spr2023/assets/103399658/e05ccd02-228f-4560-b763-3f1ec7944d4a)
+![image](https://github.com/booquist/Comparing-Neural-Network-Architectures-for-Lorenz-Equation-Forecasting---EE-399-Homework-5-Spr2023/assets/103399658/f437cf0b-8645-42a8-9d96-7cab9e0109ef)
+
+ESN: <br>
+![image](https://github.com/booquist/Comparing-Neural-Network-Architectures-for-Lorenz-Equation-Forecasting---EE-399-Homework-5-Spr2023/assets/103399658/af242e8e-e674-42b6-8ca0-47d2b2240f2a)
+![image](https://github.com/booquist/Comparing-Neural-Network-Architectures-for-Lorenz-Equation-Forecasting---EE-399-Homework-5-Spr2023/assets/103399658/63caf3e6-c565-4c2d-928c-f8433aa0b360)
+
+## V. Summary and Conclusions
+
+In this project, we compared different neural network architectures to forecast the dynamics of the Lorenz equations. Specifically, we compared feed-forward neural networks, recurrent neural networks, long short-term memory networks, and echo state networks. <br>
+
+Our results showed that the feed-forward neural network performed the best overall in terms of mean squared error, achieving the lowest MSE values for both $\rho=10$ and $\rho=17$. The FFNN outperformed the RNN and LSTM models, which showed higher MSE values for the same $\rho$ values. However, it is worth noting that the RNN and LSTM models had lower MSE values for $\rho=28$ and $\rho=35$ compared to the FFNN. <br>
+
+On the other hand, the Echo State Network did not perform well for any of the tested $\rho$ values, with MSE values much higher than the other models. <br>
+
+Overall, our results suggest that feed-forward neural networks are a promising approach for forecasting the dynamics of the Lorenz equations. However, further investigation is needed to determine the best neural network architecture for different values of $\rho$.
